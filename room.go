@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,18 +12,13 @@ import (
 )
 
 type Room struct {
-
 	// holds all current clients in the room
 	Clients map[*Client]bool
-
 	// join is a channel for all clients wishing to join the room
 	Join chan *Client
-
 	// leave is a channel for all clients wishing to leave the room
 	Leave chan *Client
-
 	// forward is a channel that holds incoming messages that should be forwarded to the other clients.
-
 	Forward chan []byte
 }
 
@@ -35,14 +31,40 @@ func NewRoom() *Room {
 	}
 }
 
+func (r *Room) BroadcastUsers() {
+	users := []string{}
+
+	for client := range r.Clients {
+		users = append(users, client.Name)
+	}
+
+	out := map[string]interface{}{
+		"type":  "users",
+		"users": users,
+		"count": len(users),
+	}
+
+	js, err := json.Marshal(out)
+	if err != nil {
+		fmt.Errorf("encoding failed %w", err)
+	}
+
+	for client := range r.Clients {
+		client.Receive <- js
+	}
+
+}
+
 func (r *Room) Run() {
 	for {
 		select {
 		case client := <-r.Join:
 			r.Clients[client] = true
+			r.BroadcastUsers()
 		case client := <-r.Leave:
 			delete(r.Clients, client)
 			close(client.Receive)
+			r.BroadcastUsers()
 		case msg := <-r.Forward:
 			for client := range r.Clients {
 				client.Receive <- msg

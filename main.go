@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-type templateHandler struct {
-	once     sync.Once
-	filename string
-	templ    *template.Template
+type TemplateHandler struct {
+	Once     sync.Once
+	Filename string
+	Templ    *template.Template
 }
 
-func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	t.once.Do(func() {
-		t.templ = template.Must(template.ParseFiles(filepath.Join("template", t.filename)))
+func (t *TemplateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	t.Once.Do(func() {
+		t.Templ = template.Must(template.ParseFiles(filepath.Join("template", t.Filename)))
 	})
 
-	t.templ.Execute(w, r)
+	t.Templ.Execute(w, r)
 }
 
 func main() {
@@ -29,8 +29,8 @@ func main() {
 	room := NewRoom()
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	http.Handle("/", &templateHandler{filename: "index.html"})
-	http.Handle("/chat", &templateHandler{filename: "chat.html"})
+	http.Handle("/", &TemplateHandler{Filename: "index.html"})
+	http.Handle("/chat", &TemplateHandler{Filename: "chat.html"})
 
 	http.HandleFunc("/room", func(w http.ResponseWriter, r *http.Request) {
 		roomName := r.URL.Query().Get("room")
